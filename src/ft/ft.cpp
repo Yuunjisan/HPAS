@@ -95,7 +95,8 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<double> in) {
  * @param in: the input array to perform the FFT on.
  * @return the input array in Fourier space
 **/
-NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<std::complex<double>> in) {
+NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<std::complex<double>> in)
+{
     int N = in.shape[0];
 
     if (N == 1)
@@ -110,8 +111,7 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<std::complex<double>> 
     NDArray<std::complex<double>> even =
         NDArray<std::complex<double>>::empty({ N / 2 });
 
-    NDArray<std::complex<double>> odd =
-        NDArray<std::complex<double>>::empty({ N / 2 });
+    NDArray<std::complex<double>> odd = NDArray<std::complex<double>>::empty({ N / 2 });
 
     for (int i = 0; i < N / 2; i++)
     {
@@ -122,8 +122,7 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<std::complex<double>> 
     NDArray<std::complex<double>> evenFFT = cooley_tukey_fft_1d(even);
     NDArray<std::complex<double>> oddFFT = cooley_tukey_fft_1d(odd);
 
-    NDArray<std::complex<double>> out =
-        NDArray<std::complex<double>>::empty({ N });
+    NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ N });
 
     for (int k = 0; k < N / 2; k++)
     {
@@ -171,8 +170,7 @@ NDArray<std::complex<double>> cooley_tukey_ifft_1d(NDArray<std::complex<double>>
     NDArray<std::complex<double>> evenIFFT = cooley_tukey_ifft_1d(even);
     NDArray<std::complex<double>> oddIFFT = cooley_tukey_ifft_1d(odd);
 
-    NDArray<std::complex<double>> out =
-        NDArray<std::complex<double>>::empty({ N });
+    NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ N });
 
     for (int k = 0; k < N / 2; k++)
     {
