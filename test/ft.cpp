@@ -58,6 +58,102 @@ TEST_CASE("DFT/FFT Performance", "[dft-1d]") {
 }
 #endif
 
+TEST_CASE("Recursive FFT simple known cases", "[fft]")
+{
+    SECTION("FFT of [1, 0, 0, 0] is [1, 1, 1, 1]")
+    {
+        NDArray<double> input = NDArray<double>::empty({ 4 });
+
+        input(0) = 1.0;
+        input(1) = 0.0;
+        input(2) = 0.0;
+        input(3) = 0.0;
+
+        auto actual = cooley_tukey_fft_1d(input);
+
+        for (int i = 0; i < 4; i++)
+        {
+            REQUIRE(std::abs(actual(i) - std::complex<double>(1.0, 0.0)) < 1e-9);
+        }
+    }
+
+    SECTION("FFT of [1, 1, 1, 1] is [4, 0, 0, 0]")
+    {
+        NDArray<double> input = NDArray<double>::empty({ 4 });
+
+        input(0) = 1.0;
+        input(1) = 1.0;
+        input(2) = 1.0;
+        input(3) = 1.0;
+
+        auto actual = cooley_tukey_fft_1d(input);
+
+        REQUIRE(std::abs(actual(0) - std::complex<double>(4.0, 0.0)) < 1e-9);
+        REQUIRE(std::abs(actual(1) - std::complex<double>(0.0, 0.0)) < 1e-9);
+        REQUIRE(std::abs(actual(2) - std::complex<double>(0.0, 0.0)) < 1e-9);
+        REQUIRE(std::abs(actual(3) - std::complex<double>(0.0, 0.0)) < 1e-9);
+    }
+}
+
+TEST_CASE("Recursive FFT matches DFT for real-valued input", "[fft]")
+{
+    auto size = GENERATE(2, 4, 8, 16, 32, 64);
+
+    NDArray<double> realInput = NDArray<double>::empty({ size });
+
+    for (int i = 0; i < size; i++)
+    {
+        double value = static_cast<double>((i * 7 + 3) % 11);
+        realInput(i) = value;
+    }
+
+    auto expected = dft_1d(realInput);
+    auto actual = cooley_tukey_fft_1d(realInput);
+
+    for (int i = 0; i < size; i++)
+    {
+        REQUIRE(std::abs(actual(i) - expected(i)) < 1e-9);
+    }
+}
+
+TEST_CASE("Recursive FFT followed by IFFT reconstructs input", "[fft]")
+{
+    auto size = GENERATE(2, 4, 8, 16, 32, 64);
+
+    NDArray<double> input = NDArray<double>::empty({ size });
+
+    for (int i = 0; i < size; i++)
+    {
+        input(i) = static_cast<double>((i * 7 + 3) % 11);
+    }
+
+    auto frequency = cooley_tukey_fft_1d(input);
+    auto reconstructedComplex = cooley_tukey_ifft_1d(frequency);
+
+    for (int i = 0; i < size; i++)
+    {
+        double reconstructed = reconstructedComplex(i).real() / size;
+
+        REQUIRE(std::abs(reconstructed - input(i)) < 1e-9);
+        REQUIRE(std::abs(reconstructedComplex(i).imag()) < 1e-9);
+    }
+}
+
+TEST_CASE("2D recursive FFT and IFFT round trip", "[fft-2d]")
+{
+    size_t size = 64;
+
+    auto data = generate_random_vector(size);
+
+    NDArray<double> input(data);
+    input.reshape(8, 8);
+
+    auto frequency = fft_2d(input, false);
+    auto reconstructed = ifft_2d(frequency, false);
+
+    REQUIRE(reconstructed.approxEquals(input));
+}
+
 TEST_CASE("2D DFT Idempotence, square", "[dft-2d]") {
     size_t size = 64;
 
