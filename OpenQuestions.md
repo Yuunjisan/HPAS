@@ -1,6 +1,6 @@
-# Project Notes
+# Open Questions
 
-## FFT Benchmark Results
+## 5. FFT Benchmark Results
 
 The benchmark compares the recursive and iterative FFT implementations across
 increasing input sizes. Lower values are better.
@@ -21,7 +21,7 @@ increasing input sizes. Lower values are better.
 | 32768 |        25.923900 |         5.892080 |
 | 65536 |        52.150000 |        12.701500 |
 
-## Observations
+### Observations
 
 To empirically determine the asymptotic runtime of the recursive and iterative
 FFT implementations, we benchmarked both algorithms on one-dimensional
