@@ -59,6 +59,12 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<double> in) {
         return out;
     }
 
+    // we essentially checkk if N is a power of 2 because otherwise we can't keep dividing by 2     
+    if (N % 2 != 0)
+    {
+        throw std::invalid_argument("n should be power of two");
+    }
+
     NDArray<double> even = NDArray<double>::empty({ N / 2 });
     NDArray<double> odd = NDArray<double>::empty({ N / 2 });
 
@@ -107,6 +113,10 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<std::complex<double>> 
         out(0) = in(0);
         return out;
     }
+    if (N % 2 != 0)
+    {
+        throw std::invalid_argument("n should be power of two");
+    }
 
     NDArray<std::complex<double>> even =
         NDArray<std::complex<double>>::empty({ N / 2 });
@@ -153,6 +163,10 @@ NDArray<std::complex<double>> cooley_tukey_ifft_1d(NDArray<std::complex<double>>
 
         out(0) = in(0);
         return out;
+    }
+    if (N % 2 != 0)
+    {
+        throw std::invalid_argument("n should be power of two");
     }
 
     NDArray<std::complex<double>> even =
@@ -213,7 +227,33 @@ NDArray<std::complex<double>> iterative_fft_1d(NDArray<double> in)
 
     NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ in.shape[0] });
 
-    // Your code here
+    for (int i = 0; i < n; i++)
+    {
+        unsigned int reversedIndex = bitReverse(i, log2n);
+        out(reversedIndex) = std::complex<double>(in(i), 0.0);
+    }
+
+    // Iterative Cooley-Tukey butterflies.
+    for (int blockSize = 2; blockSize <= n; blockSize *= 2)
+    {
+        int halfBlockSize = blockSize / 2;
+
+        for (int blockStart = 0; blockStart < n; blockStart += blockSize)
+        {
+            for (int j = 0; j < halfBlockSize; j++)
+            {
+                std::complex<double> twiddle =
+                    std::exp(-I * (2 * M_PI * j / static_cast<double>(blockSize)));
+
+                std::complex<double> even = out(blockStart + j);
+                std::complex<double> odd =
+                    twiddle * out(blockStart + j + halfBlockSize);
+
+                out(blockStart + j) = even + odd;
+                out(blockStart + j + halfBlockSize) = even - odd;
+            }
+        }
+    }
 
     return out;
 }
@@ -236,7 +276,33 @@ NDArray<std::complex<double>> iterative_fft_1d(NDArray<std::complex<double>> in)
 
     NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ in.shape[0] });
 
-    // Your code here
+    for (int i = 0; i < n; i++)
+    {
+        unsigned int reversedIndex = bitReverse(i, log2n);
+        out(reversedIndex) = in(i);
+    }
+
+    // Iterative Cooley-Tukey butterflies.
+    for (int blockSize = 2; blockSize <= n; blockSize *= 2)
+    {
+        int halfBlockSize = blockSize / 2;
+
+        for (int blockStart = 0; blockStart < n; blockStart += blockSize)
+        {
+            for (int j = 0; j < halfBlockSize; j++)
+            {
+                std::complex<double> twiddle =
+                    std::exp(-I * (2 * M_PI * j / static_cast<double>(blockSize)));
+
+                std::complex<double> even = out(blockStart + j);
+                std::complex<double> odd =
+                    twiddle * out(blockStart + j + halfBlockSize);
+
+                out(blockStart + j) = even + odd;
+                out(blockStart + j + halfBlockSize) = even - odd;
+            }
+        }
+    }
 
     return out;
 }
@@ -258,7 +324,33 @@ NDArray<std::complex<double>> iterative_ifft_1d(NDArray<std::complex<double>> in
 
     NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ in.shape[0] });
 
-    // Your code here
+    for (int i = 0; i < n; i++)
+    {
+        unsigned int reversedIndex = bitReverse(i, log2n);
+        out(reversedIndex) = in(i);
+    }
+
+    // Iterative inverse Cooley-Tukey butterflies.
+    for (int blockSize = 2; blockSize <= n; blockSize *= 2)
+    {
+        int halfBlockSize = blockSize / 2;
+
+        for (int blockStart = 0; blockStart < n; blockStart += blockSize)
+        {
+            for (int j = 0; j < halfBlockSize; j++)
+            {
+                std::complex<double> twiddle =
+                    std::exp(I * (2 * M_PI * j / static_cast<double>(blockSize)));
+
+                std::complex<double> even = out(blockStart + j);
+                std::complex<double> odd =
+                    twiddle * out(blockStart + j + halfBlockSize);
+
+                out(blockStart + j) = even + odd;
+                out(blockStart + j + halfBlockSize) = even - odd;
+            }
+        }
+    }
 
     return out;
 }

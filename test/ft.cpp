@@ -1,6 +1,7 @@
 #include <iostream>
 #include <catch2/catch_all.hpp>
 #include <random>
+#include <chrono>xxxxxxxxx
 
 #include <ft/ft.h>
 
@@ -139,6 +140,65 @@ TEST_CASE("Recursive FFT followed by IFFT reconstructs input", "[fft]")
     }
 }
 
+TEST_CASE("Iterative FFT matches DFT for real-valued input", "[fft]")
+{
+    auto size = GENERATE(2, 4, 8, 16, 32, 64);
+
+    NDArray<double> input = NDArray<double>::empty({ size });
+
+    for (int i = 0; i < size; i++)
+    {
+        double value = static_cast<double>((i * 7 + 3) % 11);
+        input(i) = value;
+    }
+
+    auto expected = dft_1d(input);
+    auto actual = iterative_fft_1d(input);
+
+    for (int i = 0; i < size; i++)
+    {
+        REQUIRE(std::abs(actual(i) - expected(i)) < 1e-9);
+    }
+}
+
+TEST_CASE("Iterative FFT followed by IFFT reconstructs input", "[fft]")
+{
+    auto size = GENERATE(2, 4, 8, 16, 32, 64);
+
+    NDArray<double> input = NDArray<double>::empty({ size });
+
+    for (int i = 0; i < size; i++)
+    {
+        input(i) = static_cast<double>((i * 7 + 3) % 11);
+    }
+
+    auto frequency = iterative_fft_1d(input);
+    auto reconstructedComplex = iterative_ifft_1d(frequency);
+
+    for (int i = 0; i < size; i++)
+    {
+        double reconstructed = reconstructedComplex(i).real() / size;
+
+        REQUIRE(std::abs(reconstructed - input(i)) < 1e-9);
+        REQUIRE(std::abs(reconstructedComplex(i).imag()) < 1e-9);
+    }
+}
+
+TEST_CASE("2D iterative FFT and IFFT round trip", "[fft-2d]")
+{
+    size_t size = 64;
+
+    auto data = generate_random_vector(size);
+
+    NDArray<double> input(data);
+    input.reshape(8, 8);
+
+    auto frequency = fft_2d(input, true);
+    auto reconstructed = ifft_2d(frequency, true);
+
+    REQUIRE(reconstructed.approxEquals(input));
+}
+
 TEST_CASE("2D recursive FFT and IFFT round trip", "[fft-2d]")
 {
     size_t size = 64;
@@ -196,4 +256,57 @@ TEST_CASE("2D DFT Idempotence, square", "[dft-2d]") {
 
     REQUIRE(idftTestOut.approxEquals(in));
 
+}
+
+TEST_CASE("FFT empirical runtime experiment", "[fft-benchmark]")
+{
+    std::vector<int> sizes = {
+        16, 32, 64, 128, 256, 512, 1024,
+        2048, 4096, 8192, 16384, 32768, 65536
+    };
+
+    constexpr int repetitions = 20;
+
+    std::cout << "\nFFT Runtime Experiment\n";
+    std::cout << "n,recursive_ms,iterative_ms\n";
+
+    for (int size : sizes)
+    {
+        auto data = generate_random_vector(size);
+        NDArray<double> input(data);
+
+        // Warm-up
+        auto warmupRecursive = cooley_tukey_fft_1d(input);
+        auto warmupIterative = iterative_fft_1d(input);
+
+        auto recursiveStart = std::chrono::high_resolution_clock::now();
+
+        for (int r = 0; r < repetitions; r++)
+        {
+            auto result = cooley_tukey_fft_1d(input);
+        }
+
+        auto recursiveEnd = std::chrono::high_resolution_clock::now();
+
+        auto iterativeStart = std::chrono::high_resolution_clock::now();
+
+        for (int r = 0; r < repetitions; r++)
+        {
+            auto result = iterative_fft_1d(input);
+        }
+
+        auto iterativeEnd = std::chrono::high_resolution_clock::now();
+
+        double recursiveMs =
+            std::chrono::duration<double, std::milli>(recursiveEnd - recursiveStart).count()
+            / repetitions;
+
+        double iterativeMs =
+            std::chrono::duration<double, std::milli>(iterativeEnd - iterativeStart).count()
+            / repetitions;
+
+        std::cout << size << ","
+            << recursiveMs << ","
+            << iterativeMs << "\n";
+    }
 }
