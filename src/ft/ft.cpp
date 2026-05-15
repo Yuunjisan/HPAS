@@ -40,7 +40,6 @@ NDArray<double> idft_1d(NDArray<std::complex<double>> in) {
     }
     return out;
 }
-// as discussxed in the lecture and in the comments, the FFT only works when the input size is a power of 2, so we need to check for that
 bool isPowerOfTwo(int n)
 {
     return n > 0 && (n & (n - 1)) == 0;
@@ -65,6 +64,7 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<double> in) {
     }
 
     // the implementation assumes that the input size is a power of two because the algorithm repeatedly splits the input into even and odd halves; we throw an error if it's not the case
+	// same applies to all the other FFT and IFFT functions in this file
     if (!isPowerOfTwo(N))
     {
         throw std::invalid_argument("FFT input size must be a power of two.");
@@ -82,8 +82,8 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<double> in) {
     NDArray<std::complex<double>> evenFFT = cooley_tukey_fft_1d(even);
     NDArray<std::complex<double>> oddFFT = cooley_tukey_fft_1d(odd);
 
-    NDArray<std::complex<double>> out =
-        NDArray<std::complex<double>>::empty({ N });
+    NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ N });
+
 
     for (int k = 0; k < N / 2; k++)
     {
@@ -112,8 +112,7 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<std::complex<double>> 
 
     if (N == 1)
     {
-        NDArray<std::complex<double>> out =
-            NDArray<std::complex<double>>::empty({ 1 });
+        NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ 1 });
 
         out(0) = in(0);
         return out;
@@ -163,15 +162,14 @@ NDArray<std::complex<double>> cooley_tukey_ifft_1d(NDArray<std::complex<double>>
 
     if (N == 1)
     {
-        NDArray<std::complex<double>> out =
-            NDArray<std::complex<double>>::empty({ 1 });
+        NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ 1 });
 
         out(0) = in(0);
         return out;
     }
     if (!isPowerOfTwo(N))
     {
-        throw std::invalid_argument("FFT input size must be a power of two.");
+        throw std::invalid_argument("IFFT input size must be a power of two.");
     }
 
     NDArray<std::complex<double>> even =
@@ -191,6 +189,8 @@ NDArray<std::complex<double>> cooley_tukey_ifft_1d(NDArray<std::complex<double>>
 
     NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ N });
 
+	// IFFT uses the positive exponent sign, the rest is the same as the FFT
+    // note: we don't do normalization here, as we expect the normalization to be done by the caller
     for (int k = 0; k < N / 2; k++)
     {
         std::complex<double> twiddle =
@@ -243,7 +243,7 @@ NDArray<std::complex<double>> iterative_fft_1d(NDArray<double> in)
         out(reversedIndex) = std::complex<double>(in(i), 0.0);
     }
 
-    // Iterative Cooley-Tukey butterflies.
+    // we apply Cooley-Tukey butterflies over blocks of size 2, 4, 8 and so on untill we cover the whole input 
     for (int blockSize = 2; blockSize <= n; blockSize *= 2)
     {
         int halfBlockSize = blockSize / 2;
@@ -252,12 +252,10 @@ NDArray<std::complex<double>> iterative_fft_1d(NDArray<double> in)
         {
             for (int j = 0; j < halfBlockSize; j++)
             {
-                std::complex<double> twiddle =
-                    std::exp(-I * (2 * M_PI * j / static_cast<double>(blockSize)));
+                std::complex<double> twiddle = std::exp(-I * (2 * M_PI * j / static_cast<double>(blockSize)));
 
                 std::complex<double> even = out(blockStart + j);
-                std::complex<double> odd =
-                    twiddle * out(blockStart + j + halfBlockSize);
+                std::complex<double> odd = twiddle * out(blockStart + j + halfBlockSize);
 
                 out(blockStart + j) = even + odd;
                 out(blockStart + j + halfBlockSize) = even - odd;
@@ -292,7 +290,7 @@ NDArray<std::complex<double>> iterative_fft_1d(NDArray<std::complex<double>> in)
         out(reversedIndex) = in(i);
     }
 
-    // Iterative Cooley-Tukey butterflies.
+	// same as above but for complex input, the only difference is that we don't need to cast the input to complex as it's already complex
     for (int blockSize = 2; blockSize <= n; blockSize *= 2)
     {
         int halfBlockSize = blockSize / 2;
@@ -301,12 +299,10 @@ NDArray<std::complex<double>> iterative_fft_1d(NDArray<std::complex<double>> in)
         {
             for (int j = 0; j < halfBlockSize; j++)
             {
-                std::complex<double> twiddle =
-                    std::exp(-I * (2 * M_PI * j / static_cast<double>(blockSize)));
+                std::complex<double> twiddle = std::exp(-I * (2 * M_PI * j / static_cast<double>(blockSize)));
 
                 std::complex<double> even = out(blockStart + j);
-                std::complex<double> odd =
-                    twiddle * out(blockStart + j + halfBlockSize);
+                std::complex<double> odd = twiddle * out(blockStart + j + halfBlockSize);
 
                 out(blockStart + j) = even + odd;
                 out(blockStart + j + halfBlockSize) = even - odd;
@@ -340,7 +336,6 @@ NDArray<std::complex<double>> iterative_ifft_1d(NDArray<std::complex<double>> in
         out(reversedIndex) = in(i);
     }
 
-    // Iterative inverse Cooley-Tukey butterflies.
     for (int blockSize = 2; blockSize <= n; blockSize *= 2)
     {
         int halfBlockSize = blockSize / 2;
@@ -349,12 +344,11 @@ NDArray<std::complex<double>> iterative_ifft_1d(NDArray<std::complex<double>> in
         {
             for (int j = 0; j < halfBlockSize; j++)
             {
-                std::complex<double> twiddle =
-                    std::exp(I * (2 * M_PI * j / static_cast<double>(blockSize)));
+                // now use positive sign for IFFT
+                std::complex<double> twiddle = std::exp(I * (2 * M_PI * j / static_cast<double>(blockSize)));
 
                 std::complex<double> even = out(blockStart + j);
-                std::complex<double> odd =
-                    twiddle * out(blockStart + j + halfBlockSize);
+                std::complex<double> odd = twiddle * out(blockStart + j + halfBlockSize);
 
                 out(blockStart + j) = even + odd;
                 out(blockStart + j + halfBlockSize) = even - odd;
