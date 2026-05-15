@@ -76,7 +76,32 @@ float TSNE::getAccuracy()
 
 	NDArray<unsigned int> nearestNeighbours = NearestNeighbourCalculator::calculateNearestNeighbours(pointsNDArray);
 
-	float accuracy = 0.0f;
+	float overlap = 0;
+	int numPoints = points.size();
+	int k = highDimNearestNeighbours.shape[1];
+
+	int p = 0;
+	while (p < numPoints) {
+		int matches = 0;
+		size_t LowNeighborIdx = 0;
+		while (LowNeighborIdx < k) {
+			unsigned int lowDIndex = nearestNeighbours(p, LowNeighborIdx);
+			size_t HighNeighborIdx = 0;
+			while (HighNeighborIdx < k) {
+				if (lowDIndex == highDimNearestNeighbours(p, HighNeighborIdx)) {
+					matches++;
+					break;
+				}
+				HighNeighborIdx++;
+			}
+			LowNeighborIdx++;
+		}
+		overlap += (float)matches / k;
+		p++;
+
+			
+	}
+	float accuracy = overlap / numPoints;
 
 	// Compute the accuracy with your metric
 
