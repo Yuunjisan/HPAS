@@ -13,9 +13,6 @@
 void TSNEGradientCompute::computePositiveGradient(NDArray<vec>& points, NDArray<vec>& gradient, PMatrix& p_matrix, prec_float exaggerationFactor, DebugRenderData& debugRenderData)
 {
 	size_t numPoints = points.size();
-
-	
-
 	float meanPositiveForceMagnitude = 0;
 	int i = 0;
 	while (i < numPoints) {
@@ -102,13 +99,13 @@ void TSNEGradientCompute::precalculate_q_denom(NDArray<vec>& points, DebugRender
 	START_TIMER();
 
 	size_t numPoints = points.size();
-	prec_float sum = 0
+	prec_float sum = 0;
 	int i = 0;
 	while (i < numPoints) {
 		int j = 0;
 		while (j < numPoints) {
 			if (i != j) {
-				sum += q_numerator(points[i], points[j]);
+				sum += q_numerator(points(i), points(j));
 			}
 			j++;
 			
@@ -120,7 +117,7 @@ void TSNEGradientCompute::precalculate_q_denom(NDArray<vec>& points, DebugRender
 	//q_denom_precalculated = ...;
 
 
-	q_denom = sum;
+	q_denom_precalculated = sum;
 	LOG_TIME("Precalculating Q denominator");
 }
 
