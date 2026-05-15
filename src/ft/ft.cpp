@@ -40,6 +40,11 @@ NDArray<double> idft_1d(NDArray<std::complex<double>> in) {
     }
     return out;
 }
+// as discussxed in the lecture and in the comments, the FFT only works when the input size is a power of 2, so we need to check for that
+bool isPowerOfTwo(int n)
+{
+    return n > 0 && (n & (n - 1)) == 0;
+}
 
 /**
  ====== TODO: IMPLEMENT ======
@@ -59,10 +64,10 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<double> in) {
         return out;
     }
 
-    // we essentially checkk if N is a power of 2 because otherwise we can't keep dividing by 2     
-    if (N % 2 != 0)
+    // the implementation assumes that the input size is a power of two because the algorithm repeatedly splits the input into even and odd halves; we throw an error if it's not the case
+    if (!isPowerOfTwo(N))
     {
-        throw std::invalid_argument("n should be power of two");
+        throw std::invalid_argument("FFT input size must be a power of two.");
     }
 
     NDArray<double> even = NDArray<double>::empty({ N / 2 });
@@ -113,9 +118,9 @@ NDArray<std::complex<double>> cooley_tukey_fft_1d(NDArray<std::complex<double>> 
         out(0) = in(0);
         return out;
     }
-    if (N % 2 != 0)
+    if (!isPowerOfTwo(N))
     {
-        throw std::invalid_argument("n should be power of two");
+        throw std::invalid_argument("FFT input size must be a power of two.");
     }
 
     NDArray<std::complex<double>> even =
@@ -164,9 +169,9 @@ NDArray<std::complex<double>> cooley_tukey_ifft_1d(NDArray<std::complex<double>>
         out(0) = in(0);
         return out;
     }
-    if (N % 2 != 0)
+    if (!isPowerOfTwo(N))
     {
-        throw std::invalid_argument("n should be power of two");
+        throw std::invalid_argument("FFT input size must be a power of two.");
     }
 
     NDArray<std::complex<double>> even =
@@ -226,6 +231,11 @@ NDArray<std::complex<double>> iterative_fft_1d(NDArray<double> in)
 	int log2n = log2(n);
 
     NDArray<std::complex<double>> out = NDArray<std::complex<double>>::empty({ in.shape[0] });
+
+    if (!isPowerOfTwo(n))
+    {
+        throw std::invalid_argument("FFT input size must be a power of two.");
+    }
 
     for (int i = 0; i < n; i++)
     {
