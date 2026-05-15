@@ -14,9 +14,28 @@ void TSNEGradientCompute::computePositiveGradient(NDArray<vec>& points, NDArray<
 {
 	size_t numPoints = points.size();
 
+
 	prec_float Z = q_denom_precalculated;
 
 	float meanPositiveForceMagnitude = 0;
+
+	float meanPositiveForceMagnitude = 0;
+	int i = 0;
+	while (i < numPoints) {
+		const auto& row = p_matrix.get_row(i);
+		auto it = row.begin();
+		while (it != row.end()) {
+			int j = it.first;
+			prec_float p_ij = it.value;
+			prec_float w_ij = q_numerator(points(i), points(j));
+			vec force = exaggerationFactor * p_ij * w_ij * (points(i) - points(j));
+			gradient(i) += force;
+			meanPositiveForceMagnitude += glm::length(force);
+			it++;
+		}
+		i++;
+	}
+
 
 	// Implement the positive gradient calculation here
 
@@ -40,6 +59,24 @@ void TSNEGradientCompute::computeNegativeGradient(NDArray<vec>& points, NDArray<
 	size_t numPoints = points.size();
 
 	prec_float Z = q_denom_precalculated;
+
+	int i = 0;
+	while (i < numPoints) {
+		vec grad_i(0.0f);
+		int j = 0; 
+		while (j < numPoints) {
+			if (i != j) {
+				prec_float q_ij = q_numerator(points(i), points(j));
+				vec force = ((q_ij * q_ij) / Z) * (points(j) - points(i));
+				grad_i -= force;
+			}
+			j++;
+		}
+		gradient(i) += grad_i;
+		i++;
+		
+	}
+
 
 	// Implement the negative gradient calculation here
 }
@@ -72,7 +109,29 @@ void TSNEGradientCompute::precalculate_q_denom(NDArray<vec>& points, DebugRender
 
 	size_t numPoints = points.size();
 
+
 	//q_denom_precalculated = ...;
+
+
+	prec_float sum = 0;
+	int i = 0;
+	while (i < numPoints) {
+		int j = 0;
+		while (j < numPoints) {
+			if (i != j) {
+				sum += q_numerator(points(i), points(j));
+			}
+			j++;
+			
+		}
+		i++;
+	}
+
+
+	//q_denom_precalculated = ...;
+
+
+	q_denom_precalculated = sum;
 
 	LOG_TIME("Precalculating Q denominator");
 }
@@ -88,7 +147,12 @@ prec_float TSNEGradientCompute::clamp(prec_float x, prec_float min, prec_float m
  */
 prec_float TSNEGradientCompute::q_numerator(vec& a, vec& b)
 {
+
 	return 1.0;
+
+	return 1.0 / (1.0 + sqdistance(a, b));
+	
+
 }
 
 prec_float TSNEGradientCompute::sqdistance(vec& a, vec& b)
