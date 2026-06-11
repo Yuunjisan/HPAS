@@ -1,5 +1,8 @@
 #include "tsne.h"
 
+#include <algorithm>
+#include <unordered_set>
+
 TSNE::TSNE()
 {
 }
@@ -66,6 +69,11 @@ float TSNE::getAccuracy()
 
 	NDArray<unsigned int> highDimNearestNeighbours = NearestNeighbourCalculator::getNearestNeighbours();
 
+	if (points.size() == 0 || highDimNearestNeighbours.shape.size() < 2)
+	{
+		return 0.0f;
+	}
+
 	NDArray<float> pointsNDArray = NDArray<float>::empty({ (int)points.size(), 2 });
 
 	for (int i = 0; i < points.size(); i++)
@@ -76,39 +84,36 @@ float TSNE::getAccuracy()
 
 	NDArray<unsigned int> nearestNeighbours = NearestNeighbourCalculator::calculateNearestNeighbours(pointsNDArray);
 
-	float accuracy = 0.0f;
+	const size_t numPoints = std::min(highDimNearestNeighbours.shape[0], nearestNeighbours.shape[0]);
+	const size_t numNeighbours = std::min(highDimNearestNeighbours.shape[1], nearestNeighbours.shape[1]);
 
-	float overlap = 0;
-	int numPoints = points.size();
-	int k = highDimNearestNeighbours.shape[1];
-
-	int p = 0;
-	while (p < numPoints) {
-		int matches = 0;
-		size_t LowNeighborIdx = 0;
-		while (LowNeighborIdx < k) {
-			unsigned int lowDIndex = nearestNeighbours(p, LowNeighborIdx);
-			size_t HighNeighborIdx = 0;
-			while (HighNeighborIdx < k) {
-				if (lowDIndex == highDimNearestNeighbours(p, HighNeighborIdx)) {
-					matches++;
-					break;
-				}
-				HighNeighborIdx++;
-			}
-			LowNeighborIdx++;
-		}
-		overlap += (float)matches / k;
-		p++;
-
-
+	if (numPoints == 0 || numNeighbours == 0)
+	{
+		return 0.0f;
 	}
-	float accuracy = overlap / numPoints;
 
+	size_t preservedNeighbours = 0;
 
-	// Compute the accuracy with your metric
+	for (size_t i = 0; i < numPoints; i++)
+	{
+		std::unordered_set<unsigned int> highDimNeighbourSet;
+		highDimNeighbourSet.reserve(numNeighbours);
 
-	return accuracy;
+		for (size_t j = 0; j < numNeighbours; j++)
+		{
+			highDimNeighbourSet.insert(highDimNearestNeighbours(i, j));
+		}
+
+		for (size_t j = 0; j < numNeighbours; j++)
+		{
+			if (highDimNeighbourSet.contains(nearestNeighbours(i, j)))
+			{
+				preservedNeighbours++;
+			}
+		}
+	}
+
+	return 100.0f * static_cast<float>(preservedNeighbours) / static_cast<float>(numPoints * numNeighbours);
 }
 
 void TSNE::compareGradientComputers(TSNEGradientCompute& gradientComputer1, TSNEGradientCompute& gradientComputer2, DebugRenderData& debugRenderData)

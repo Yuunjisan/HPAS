@@ -161,90 +161,114 @@ int main(int /* argc */, char** argv)
         // placed between userInterface.start() and userInterface.end()
         userInterface.start();
 
-        ImGui::Text("Active gradient computer");
-        ImGui::RadioButton("Exact", &settings.activeGradientComputerIndex, 0);
-		//ImGui::RadioButton("Quadtree", &settings.activeGradientComputerIndex, 1);
-		ImGui::RadioButton("FItSNE", &settings.activeGradientComputerIndex, 2);
-		ImGui::RadioButton("Wrapped FItSNE", &settings.activeGradientComputerIndex, 3);
-
-        if (ImGui::BeginCombo("Load Dataset", "Select..."))
-        {
-            if (ImGui::Selectable("MNIST"))
-            {
-                MNISTReader mnistReader;
-                mnistReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering, false);
-            }
-            if (ImGui::Selectable("Big MNIST"))
-            {
-                MNISTReader mnistReader;
-                mnistReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering, true);
-            }
-            if (ImGui::Selectable("Myeloid8000"))
-            {
-                MyeloidReader myeloidReader;
-                myeloidReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering);
-            }
-            if (ImGui::Selectable("Planaria"))
-            {
-                PlanariaReader planariaReader;
-                planariaReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering);
-            }
-
-            ImGui::EndCombo();
-        }
-
 		static float accuracy = -1.0f;
 
-        if (ImGui::Button("Compute accuracy"))
+        if (ImGui::CollapsingHeader("Dataset", ImGuiTreeNodeFlags_DefaultOpen))
         {
-			accuracy = tsne.getAccuracy();
+            if (ImGui::BeginCombo("Load Dataset", "Select..."))
+            {
+                if (ImGui::Selectable("MNIST"))
+                {
+                    MNISTReader mnistReader;
+                    mnistReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering, false);
+                    accuracy = -1.0f;
+                }
+                if (ImGui::Selectable("Big MNIST"))
+                {
+                    MNISTReader mnistReader;
+                    mnistReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering, true);
+                    accuracy = -1.0f;
+                }
+                if (ImGui::Selectable("Myeloid8000"))
+                {
+                    MyeloidReader myeloidReader;
+                    myeloidReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering);
+                    accuracy = -1.0f;
+                }
+                if (ImGui::Selectable("Planaria"))
+                {
+                    PlanariaReader planariaReader;
+                    planariaReader.readData(tsne, squareDistanceCalculator, settings, numberOfNeighboursConsidering);
+                    accuracy = -1.0f;
+                }
+
+                ImGui::EndCombo();
+            }
+
+            ImGui::Checkbox("Use PCA", &settings.usePCA);
+            tooltip("Use PCA to set a more reasonable initial embedding of the high-dimensional data into 2D");
         }
 
-        if (accuracy != -1.0f)
+        if (ImGui::CollapsingHeader("Algorithm", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::Text("Accuracy: %.2f", accuracy);
+            ImGui::Text("Active gradient computer");
+            ImGui::RadioButton("Exact", &settings.activeGradientComputerIndex, 0);
+            //ImGui::RadioButton("Quadtree", &settings.activeGradientComputerIndex, 1);
+            ImGui::RadioButton("FItSNE", &settings.activeGradientComputerIndex, 2);
+            ImGui::RadioButton("Wrapped FItSNE", &settings.activeGradientComputerIndex, 3);
         }
 
-        if (ImGui::Button("Compare exact and fitsne gradient computers"))
+        if (ImGui::CollapsingHeader("Run Controls", ImGuiTreeNodeFlags_DefaultOpen))
         {
-			tsne.compareGradientComputers(exactGradientComputer, fItSNEGradientComputer, debugRenderData);
+            ImGui::Checkbox("Run t-SNE", &runningTSNE);
+            tooltip("Automatically keep running the t-SNE algorithm until this checkbox is unchecked");
+
+            if (ImGui::Button("Step t-SNE"))
+            {
+                TSNEGradientCompute& activeGradientComputer = getActiveGradientComputer(
+                    settings.activeGradientComputerIndex,
+                    exactGradientComputer,
+                    fItSNEGradientComputer,
+                    wrappedFItSNEGradientComputer);
+
+                debugRenderData.clear();
+                float tsneStepStartTime = static_cast<float>(glfwGetTime());
+                tsne.step(activeGradientComputer, debugRenderData);
+                float tsneStepEndTime = static_cast<float>(glfwGetTime());
+                std::cout << "t-SNE step took " << tsneStepEndTime - tsneStepStartTime << " seconds" << std::endl;
+                std::cout << "Running t-SNE at " << 1.0f / (tsneStepEndTime - tsneStepStartTime) << " steps / second" << std::endl;
+                accuracy = -1.0f;
+            }
+
+            ImGui::Text("t-SNE step %d", tsne.getStepIndex());
         }
 
-		ImGui::Checkbox("Run t-SNE", &runningTSNE);
-        tooltip("Automatically keep running the t-SNE algorithm until this checkbox is unchecked");
-
-		ImGui::Checkbox("Use label colors", &settings.useLabelColors);
-		tooltip("Use the labels to color the points. If this is not checked, each point will simply have the same colour");
-
-		ImGui::Checkbox("Enable debug", &debugRenderData.enabled);
-		tooltip("Enable visual debugging information. Debug information can only be made in debugRenderData if this is turned on");
-
-        ImGui::Checkbox("Show debug", &settings.showDebug);
-		tooltip("Show any drawn debug information");
-
-        ImGui::Checkbox("Follow data", &settings.followData);
-		tooltip("Automatically follow the data when it moves");
-
-		ImGui::Checkbox("Use PCA", &settings.usePCA);
-		tooltip("Use PCA to set a more reasonable initial embedding of the high-dimensional data into 2D");
-
-
-        if (ImGui::Button("Step t-SNE"))
+        if (ImGui::CollapsingHeader("Interpretation / Trust", ImGuiTreeNodeFlags_DefaultOpen))
         {
-			TSNEGradientCompute& activeGradientComputer = getActiveGradientComputer(
-                settings.activeGradientComputerIndex,
-				exactGradientComputer,
-				fItSNEGradientComputer,
-				wrappedFItSNEGradientComputer);
+            ImGui::BulletText("Local neighborhoods are more reliable than global cluster distances.");
+            ImGui::BulletText("Separated clusters are not automatically distinct subpopulations.");
 
-            debugRenderData.clear();
-            float tsneStepStartTime = static_cast<float>(glfwGetTime());
-            tsne.step(activeGradientComputer, debugRenderData);
-            float tsneStepEndTime = static_cast<float>(glfwGetTime());
-            std::cout << "t-SNE step took " << tsneStepEndTime - tsneStepStartTime << " seconds" << std::endl;
-            std::cout << "Running t-SNE at " << 1.0f / (tsneStepEndTime - tsneStepStartTime) << " steps / second" << std::endl;
+            if (ImGui::Button("Compute neighborhood preservation"))
+            {
+                accuracy = tsne.getAccuracy();
+            }
+
+            if (accuracy != -1.0f)
+            {
+                ImGui::Text("Neighborhood preservation: %.2f%%", accuracy);
+                tooltip("Percentage of nearest neighbours from the original data that are still nearest neighbours in the 2D embedding");
+            }
         }
-    	ImGui::Text("t-SNE step %d", tsne.getStepIndex());
+
+        if (ImGui::CollapsingHeader("Display / Advanced Debug"))
+        {
+            ImGui::Checkbox("Use label colors", &settings.useLabelColors);
+            tooltip("Use the labels to color the points. If this is not checked, each point will simply have the same colour");
+
+            ImGui::Checkbox("Follow data", &settings.followData);
+            tooltip("Automatically follow the data when it moves");
+
+            ImGui::Checkbox("Enable debug", &debugRenderData.enabled);
+            tooltip("Enable visual debugging information. Debug information can only be made in debugRenderData if this is turned on");
+
+            ImGui::Checkbox("Show debug", &settings.showDebug);
+            tooltip("Show any drawn debug information");
+
+            if (ImGui::Button("Compare exact and fitsne gradient computers"))
+            {
+                tsne.compareGradientComputers(exactGradientComputer, fItSNEGradientComputer, debugRenderData);
+            }
+        }
 
 		if (!AUTO_SAVE_SETTINGS && ImGui::Button("Save settings"))
 		{

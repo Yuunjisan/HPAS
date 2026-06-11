@@ -19,27 +19,19 @@ void TSNEGradientCompute::computePositiveGradient(NDArray<vec>& points, NDArray<
 
 	float meanPositiveForceMagnitude = 0;
 
-	float meanPositiveForceMagnitude = 0;
-	int i = 0;
-	while (i < numPoints) {
-		const auto& row = p_matrix.get_row(i);
-		auto it = row.begin();
-		while (it != row.end()) {
-			int j = it.first;
-			prec_float p_ij = it.value;
-			prec_float w_ij = q_numerator(points(i), points(j));
-			vec force = exaggerationFactor * p_ij * w_ij * (points(i) - points(j));
+	for (size_t i = 0; i < numPoints; i++)
+	{
+		for (size_t neighbourIndex = 0; neighbourIndex < p_matrix.shape[1]; neighbourIndex++)
+		{
+			const ValueAndIndex& pEntry = p_matrix(i, neighbourIndex);
+			const unsigned int j = pEntry.index;
+			const prec_float p_ij = pEntry.value;
+			const prec_float w_ij = q_numerator(points(i), points(j));
+			const vec force = exaggerationFactor * p_ij * w_ij * (points(i) - points(j));
 			gradient(i) += force;
 			meanPositiveForceMagnitude += glm::length(force);
-			it++;
 		}
-		i++;
 	}
-
-
-	// Implement the positive gradient calculation here
-
-
 
 	meanPositiveForceMagnitude /= (float)numPoints;
 
